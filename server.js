@@ -5,12 +5,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ডেটাবেজ (সাময়িক)
+// ডেটাবেজ (সাময়িক) - প্রফেশনাল কিছু ডেমো ইমেজ লিঙ্কসহ
 let products = [
-    { id: 1, title: "T800 Ultra Smartwatch", price: 1200, img: "Smart Watch T800" },
-    { id: 2, title: "Pro 4 Wireless Earbuds", price: 850, img: "Wireless Earbuds" },
-    { id: 3, title: "20000mAh Power Bank", price: 1850, img: "Power Bank 20k" },
-    { id: 4, title: "Smart RGB Desk Lamp", price: 950, img: "RGB Desk Lamp" }
+    { id: 1, title: "T800 Ultra Smartwatch", price: 1200, img: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=500&auto=format&fit=crop&q=60" },
+    { id: 2, title: "Pro 4 Wireless Earbuds", price: 850, img: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60" },
+    { id: 3, title: "20000mAh Power Bank", price: 1850, img: "https://images.unsplash.com/photo-1609592424109-dd9892f1b17c?w=500&auto=format&fit=crop&q=60" },
+    { id: 4, title: "Smart RGB Desk Lamp", price: 950, img: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&auto=format&fit=crop&q=60" }
 ];
 let orders = [];
 
@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
         let p = products[i];
         productHTML += `
         <div class="product-card">
-            <div class="product-img">` + p.img + `</div>
+            <img class="product-img" src="` + p.img + `" alt="Product Image" onerror="this.src='https://placehold.co/300x200?text=Shinrai+Product'">
             <div class="product-title">` + p.title + `</div>
             <div class="product-price">৳ ` + p.price + `</div>
             <button class="buy-btn" onclick="openOrderModal('` + p.title + `', ` + p.price + `)">Buy Now (কিনুন)</button>
@@ -42,13 +42,12 @@ app.get('/', (req, res) => {
             .logo { font-size: 24px; font-weight: bold; }
             .container { padding: 20px 50px; margin-top: 10px; }
             .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-            .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-            .product-img { height: 150px; background: #eee; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: bold; color: #888; }
-            .product-title { font-weight: bold; margin-bottom: 10px; height: 40px; }
+            .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
+            .product-img { width: 100%; height: 180px; object-fit: cover; border-radius: 6px; margin-bottom: 10px; background: #eee; }
+            .product-title { font-weight: bold; margin-bottom: 10px; height: 40px; overflow: hidden; font-size: 15px; }
             .product-price { color: #FF4747; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
             .buy-btn { background: #FF4747; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
             
-            /* Order Form Modal */
             #orderModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 999; }
             .modal-content { background:white; padding:30px; border-radius:8px; width:400px; }
             .modal-content input, .modal-content select { width:100%; padding:10px; margin: 10px 0; border: 1px solid #ccc; border-radius:4px; }
@@ -66,7 +65,6 @@ app.get('/', (req, res) => {
             <div class="product-grid">` + productHTML + `</div>
         </div>
 
-        <!-- Checkout Form Modal -->
         <div id="orderModal">
             <div class="modal-content">
                 <h3 id="modalProductTitle">Order Form</h3>
@@ -149,6 +147,7 @@ app.get('/admin', (req, res) => {
             th, td { padding:12px; border: 1px solid #ddd; text-align:left; }
             th { background:#FF4747; color:white; }
             .btn { background:#28a745; color:white; padding:10px 15px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; text-decoration:none; }
+            .form-input { padding:8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
         </style>
     </head>
     <body>
@@ -157,10 +156,12 @@ app.get('/admin', (req, res) => {
         <div class="card">
             <h3>➕ নতুন প্রোডাক্ট যোগ করুন (Add Product)</h3>
             <form action="/admin/add-product" method="POST" style="margin-top:10px;">
-                <input type="text" name="title" placeholder="Product Name" style="padding:8px; width:200px;" required>
-                <input type="number" name="price" placeholder="Price" style="padding:8px; width:100px;" required>
+                <input type="text" name="title" class="form-input" placeholder="Product Name (যেমন: Smart Watch)" style="width:250px;" required>
+                <input type="number" name="price" class="form-input" placeholder="Price (যেমন: 1200)" style="width:120px;" required>
+                <input type="text" name="imgUrl" class="form-input" placeholder="Image URL (ঐচ্ছিক - ছবির লিঙ্ক দিন)" style="width:300px;">
                 <button type="submit" class="btn">Add Product</button>
             </form>
+            <p style="font-size: 12px; color: #666; margin-top: 5px;">*টিপস: যেকোনো ছবির ওপর রাইট ক্লিক করে "Copy Image Address" দিয়ে এখানে লিঙ্ক বসাতে পারেন।</p>
         </div>
 
         <div class="card">
@@ -192,12 +193,16 @@ app.get('/admin', (req, res) => {
 
 // ======= ৪. নতুন প্রোডাক্ট অ্যাড করার ব্যাকএন্ড =======
 app.post('/admin/add-product', (req, res) => {
-    const { title, price } = req.body;
+    const { title, price, imgUrl } = req.body;
+    
+    // যদি ইমেজ লিঙ্ক না দেয়, তবে একটি ডিফল্ট ইমেজ প্লেসহোল্ডার সেট হবে
+    let finalImg = imgUrl ? imgUrl : "https://placehold.co/300x200?text=" + encodeURIComponent(title);
+
     products.push({
         id: products.length + 1,
         title,
         price: parseInt(price),
-        img: "New Product Box"
+        img: finalImg
     });
     res.redirect('/admin');
 });
