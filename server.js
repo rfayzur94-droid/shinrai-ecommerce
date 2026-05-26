@@ -1,25 +1,35 @@
 const express = require('express');
+const multer = require('multer'); // ছবি আপলোডের জন্য multer ইম্পোর্ট
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ১. ডাটাবেজ (মেমোরি শেয়ার্ড ডাটা)
+// 'uploads' ফোল্ডারটিকে পাবলিক করা হলো যেন ব্রাউজার থেকে ছবি দেখা যায়
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ছবি আপলোড কনফিগারেশন (Multer Setup)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // ছবিগুলো 'uploads' ফোল্ডারে সেভ হবে
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname); // ছবির ইউনিক নাম তৈরি
+  }
+});
+const upload = multer({ storage: storage });
+
+// ১. ডাটাবেজ (Default কিছু ডেমো ইমেজ লিঙ্ক সহ প্রোডাক্ট)
 let products = [
-  {id:1, name:'Premium Wireless Headphones', price:2499, old:3999, emoji:'🎧', badge:'Hot', cat:'Electronics', stock:45, status:'Active'},
-  {id:2, name:'Smart Watch Pro', price:4999, old:7500, emoji:'⌚', badge:'Sale', cat:'Electronics', stock:23, status:'Active'},
-  {id:3, name:'Cotton Casual T-Shirt', price:599, old:899, emoji:'👕', badge:'', cat:'Fashion', stock:120, status:'Active'},
-  {id:4, name:'Running Shoes', price:1899, old:2500, emoji:'👟', badge:'New', cat:'Sports', stock:38, status:'Active'},
-  {id:5, name:'Coffee Maker Deluxe', price:3299, old:4500, emoji:'☕', badge:'', cat:'Home & Living', stock:15, status:'Active'},
-  {id:6, name:'Gaming Mechanical Keyboard', price:2199, old:3200, emoji:'⌨️', badge:'Hot', cat:'Gaming', stock:29, status:'Active'},
-  {id:7, name:'Skincare Face Serum', price:899, old:1200, emoji:'✨', badge:'New', cat:'Beauty', stock:65, status:'Active'},
-  {id:8, name:'Yoga Mat Premium', price:1299, old:1800, emoji:'🧘', badge:'', cat:'Sports', stock:42, status:'Active'}
+  {id:1, name:'Premium Wireless Headphones', price:2499, old:3999, image:'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500', badge:'Hot', cat:'Electronics', stock:45, status:'Active'},
+  {id:2, name:'Smart Watch Pro', price:4999, old:7500, image:'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500', badge:'Sale', cat:'Electronics', stock:23, status:'Active'},
+  {id:3, name:'Cotton Casual T-Shirt', price:599, old:899, image:'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500', badge:'', cat:'Fashion', stock:120, status:'Active'}
 ];
 
 let orders = [
-  {id:'#ORD-1001', customer:'Rahim Uddin', phone:'01711234567', address:'Mirpur, Dhaka', items:2, total:4998, payment:'bKash', date:'2026-05-20', status:'Delivered'},
-  {id:'#ORD-1002', customer:'Fatema Khatun', phone:'01811234568', address:'Gulshan, Dhaka', items:1, total:2499, payment:'Nagad', date:'2026-05-22', status:'Shipped'}
+  {id:'#ORD-1001', customer:'Rahim Uddin', phone:'01711234567', address:'Mirpur, Dhaka', items:2, total:4998, payment:'bKash', date:'2026-05-20', status:'Delivered'}
 ];
 
 // ======= ২. কাস্টমারদের জন্য ফ্রন্টএন্ড ওয়েবসাইট =======
@@ -30,7 +40,7 @@ app.get('/', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shinrai — Your One-Stop Store</title>
+<title>ShopNest — Your One-Stop Store</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -52,12 +62,10 @@ app.get('/', (req, res) => {
   .section { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
   .section-title { font-family: 'Syne', sans-serif; font-size: 1.75rem; font-weight: 700; }
-  .cats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; }
-  .cat-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .cat-card:hover { border-color: var(--accent); transform: translateY(-3px); }
   .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
   .product-card { background: var(--white); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
-  .product-img { width: 100%; aspect-ratio: 1; background: var(--light); display: flex; align-items: center; justify-content: center; font-size: 3.5rem; position: relative; }
+  .product-img { width: 100%; aspect-ratio: 1; background: var(--light); display: flex; align-items: center; justify-content: center; position: relative; }
+  .product-img img { width: 100%; height: 100%; object-fit: cover; } /* ইমেজের সাইজ ঠিক রাখার জন্য */
   .product-info { padding: 1rem; }
   .product-name { font-weight: 500; font-size: 0.95rem; margin-bottom: 0.25rem; }
   .product-price { font-weight: 700; font-size: 1.05rem; color: var(--accent); }
@@ -129,7 +137,9 @@ let cart = [];
 function renderProducts() {
   document.getElementById('productsGrid').innerHTML = allProducts.map(p => \`
     <div class="product-card">
-      <div class="product-img">\${p.emoji}</div>
+      <div class="product-img">
+        <img src="\${p.image}" alt="\${p.name}"> <!-- ইমোজির জায়গায় এখন ইমেজ ট্যাগ -->
+      </div>
       <div class="product-info">
         <div class="product-name">\${p.name}</div>
         <div class="product-price">৳\${p.price}</div>
@@ -162,7 +172,7 @@ renderProducts();
     `);
 });
 
-// ======= ৩. অর্ডার সাবমিট ব্যাকএন্ড লজিক =======
+// ======= ৩. অর্ডার সাবমিট লজিক =======
 app.post('/place-order', (req, res) => {
     const { cartData, customerName, customerPhone, customerAddress, paymentMethod } = req.body;
     let items = JSON.parse(cartData || '[]');
@@ -183,7 +193,7 @@ app.post('/place-order', (req, res) => {
     res.send('<h1>Order Placed!</h1><a href="/">Go Back</a>');
 });
 
-// ======= ৪. আপনার শেয়ার করা প্রিমিয়াম অ্যাডমিন প্যানেল (লজিক সহ) =======
+// ======= ৪. অ্যাডমিন প্যানেল (ছবি আপলোড ফর্ম সহ) =======
 app.get('/admin', (req, res) => {
     res.send(`
 <!DOCTYPE html>
@@ -204,13 +214,10 @@ app.get('/admin', (req, res) => {
   .sidebar-logo span { color: var(--accent); }
   .sidebar-logo small { display: block; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: rgba(255,255,255,0.4); }
   .sidebar-nav { padding: 1rem 0; flex: 1; }
-  .nav-section-label { padding: 0.75rem 1.25rem 0.35rem; font-size: 0.68rem; color: rgba(255,255,255,0.35); text-transform: uppercase; }
   .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1.25rem; cursor: pointer; color: rgba(255,255,255,0.65); font-size: 0.9rem; }
-  .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
   .nav-item.active { background: rgba(233,69,96,0.12); color: var(--accent); border-left: 3px solid var(--accent); }
   .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
   .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
-  .topbar-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
   .content { padding: 2rem; flex: 1; }
   .page { display: none; }
   .page.active { display: block; }
@@ -225,13 +232,9 @@ app.get('/admin', (req, res) => {
   .badge { padding: 0.25rem 0.65rem; border-radius: 50px; font-size: 0.73rem; font-weight: 600; }
   .badge-success { background: #d1fae5; color: #065f46; }
   .badge-warning { background: #fef3c7; color: #92400e; }
-  .badge-danger { background: #fee2e2; color: #991b1b; }
   .btn { padding: 0.5rem 1.1rem; border-radius: 7px; border: none; cursor: pointer; }
   .btn-primary { background: var(--accent); color: #fff; }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  .chart-bars { display: flex; align-items: flex-end; gap: 0.6rem; height: 120px; }
-  .bar-wrap { display: flex; flex-direction: column; align-items: center; flex: 1; }
-  .bar { width: 100%; border-radius: 4px 4px 0 0; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.active { display: flex; }
   .modal { background: var(--white); border-radius: 14px; padding: 1.75rem; max-width: 520px; width: 100%; }
@@ -239,15 +242,14 @@ app.get('/admin', (req, res) => {
   .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
   .form-group.full { grid-column: 1/-1; }
   .form-group input, .form-group select { padding: 0.6rem; border: 1px solid var(--border); border-radius: 7px; }
+  .table-img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
 </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-logo">Shop<span>Nest</span><small>Admin Dashboard</small></div>
   <nav class="sidebar-nav">
-    <div class="nav-section-label">Main</div>
     <div class="nav-item active" onclick="showPage('dashboard', this)">📊 Dashboard</div>
     <div class="nav-item" onclick="showPage('products', this)">📦 Products</div>
     <div class="nav-item" onclick="showPage('orders', this)">🛒 Orders</div>
@@ -256,12 +258,12 @@ app.get('/admin', (req, res) => {
 
 <main class="main">
   <header class="topbar">
-    <span class="topbar-title" id="topbarTitle">Dashboard</span>
+    <span class="topbar-title">Admin Panel</span>
     <div><a href="/" style="font-size:0.85rem; color:var(--gray);">← View Store</a></div>
   </header>
 
   <div class="content">
-    <!-- DASHBOARD PAGE -->
+    <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="stats-grid">
         <div class="stat-card">
@@ -274,7 +276,6 @@ app.get('/admin', (req, res) => {
         </div>
       </div>
       <div class="two-col">
-        <div class="card"><div class="card-header"><h3>Revenue Chart</h3></div><div style="padding:20px;" class="chart-bars" id="revenueChart"></div></div>
         <div class="card"><div class="card-header"><h3>Recent Orders</h3></div><table><thead><tr><th>ID</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody id="recentOrders"></tbody></table></div>
       </div>
     </div>
@@ -284,7 +285,7 @@ app.get('/admin', (req, res) => {
       <div style="margin-bottom:15px; text-align:right;"><button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button></div>
       <div class="card">
         <table>
-          <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Status</th></tr></thead>
+          <thead><tr><th>Image</th><th>Product</th><th>Category</th><th>Price</th><th>Status</th></tr></thead>
           <tbody id="adminProductsTable"></tbody>
         </table>
       </div>
@@ -302,18 +303,18 @@ app.get('/admin', (req, res) => {
   </div>
 </main>
 
-<!-- ADD PRODUCT MODAL (ব্যাকএন্ড ফর্ম যুক্ত করা হয়েছে) -->
+<!-- ADD PRODUCT MODAL (enctype="multipart/form-data" যুক্ত করা হয়েছে ইমেজ আপলোডের জন্য) -->
 <div class="modal-overlay" id="productModal">
   <div class="modal">
-    <h3>Add Product</h3><br>
-    <form action="/admin/add-product" method="POST">
+    <h3>Add New Product</h3><br>
+    <form action="/admin/add-product" method="POST" enctype="multipart/form-data">
       <div class="form-grid">
         <div class="form-group full"><label>Product Name</label><input type="text" name="name" required></div>
         <div class="form-group"><label>Price (৳)</label><input type="number" name="price" required></div>
         <div class="form-group"><label>Category</label>
           <select name="cat"><option>Electronics</option><option>Fashion</option><option>Sports</option></select>
         </div>
-        <div class="form-group"><label>Emoji Icon</label><input type="text" name="emoji" value="📦"></div>
+        <div class="form-group full"><label>Upload Product Image</label><input type="file" name="product_image" accept="image/*" required></div>
       </div><br>
       <button type="submit" class="btn btn-primary">Save Product</button>
       <button type="button" class="btn" style="background:#ccc;" onclick="closeModal()">Cancel</button>
@@ -330,15 +331,6 @@ function loadDashboard() {
   document.getElementById('statRevenue').textContent = '৳' + totalRev.toLocaleString();
   document.getElementById('statOrders').textContent = orders.length;
 
-  // Revenue chart render
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  document.getElementById('revenueChart').innerHTML = days.map(d => \`
-    <div class="bar-wrap">
-      <div class="bar" style="height:70%; background:var(--accent);"></div>
-      <span style="font-size:10px;">\${d}</span>
-    </div>\`).join('');
-
-  // Recent orders render
   document.getElementById('recentOrders').innerHTML = orders.slice(0,5).map(o => \`
     <tr><td>\${o.id}</td><td>\${o.customer}</td><td>৳\${o.total}</td><td><span class="badge badge-warning">\${o.status}</span></td></tr>\`).join('');
 }
@@ -351,7 +343,13 @@ function showPage(name, el) {
   
   if(name==='products') {
     document.getElementById('adminProductsTable').innerHTML = products.map(p => \`
-      <tr><td>\${p.emoji} \${p.name}</td><td>\${p.cat}</td><td>৳\${p.price}</td><td><span class="badge badge-success">\${p.status}</span></td></tr>\`).join('');
+      <tr>
+        <td><img src="\${p.image}" class="table-img"></td>
+        <td>\${p.name}</td>
+        <td>\${p.cat}</td>
+        <td>৳\${p.price}</td>
+        <td><span class="badge badge-success">\${p.status}</span></td>
+      </tr>\`).join('');
   }
   if(name==='orders') {
     document.getElementById('ordersTable').innerHTML = orders.map(o => \`
@@ -369,15 +367,19 @@ loadDashboard();
     `);
 });
 
-// ======= ৫. ব্যাকএন্ডে প্রোডাক্ট অ্যাড করার লজিক =======
-app.post('/admin/add-product', (req, res) => {
-    const { name, price, cat, emoji } = req.body;
+// ======= ৫. ইমেজ ফাইল আপলোডসহ প্রোডাক্ট সেভ করার ব্যাকএন্ড লজিক =======
+app.post('/admin/add-product', upload.single('product_image'), (req, res) => {
+    const { name, price, cat } = req.body;
+    
+    // যদি ছবি আপলোড করা হয় তাহলে তার পাথ জেনারেট হবে, নাহলে একটি ডেমো ছবি থাকবে
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/150';
+
     products.push({
         id: products.length + 1,
         name,
         price: parseInt(price),
         old: parseInt(price) + 500,
-        emoji: emoji || '📦',
+        image: imageUrl, // এখানে ইমোজির বদলে ছবির URL সেভ হচ্ছে
         badge: 'New',
         cat,
         stock: 50,
