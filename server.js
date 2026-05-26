@@ -3,124 +3,201 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// প্রফেশনাল AliExpress স্টাইল হোমপেজ (HTML/CSS)
+// সাময়িকভাবে ডাটা জমা রাখার জন্য (Database হিসেবে)
+let products = [
+    { id: 1, title: "T800 Ultra Smartwatch", price: 1200, img: "Smart Watch T800" },
+    { id: 2, title: "Pro 4 Wireless Earbuds", price: 850, img: "Wireless Earbuds" },
+    { id: 3, title: "20000mAh Power Bank", price: 1850, img: "Power Bank 20k" },
+    { id: 4, title: "Smart RGB Desk Lamp", price: 950, img: "RGB Desk Lamp" }
+];
+let orders = [];
+
+// ======= ১. কাস্টমারদের জন্য মূল ওয়েবসাইট =======
 app.get('/', (req, res) => {
+    let productHTML = '';
+    products.forEach(p => {
+        productHTML += `
+        <div class="product-card">
+            <div class="product-img">\${p.img}</div>
+            <div class="product-title">\${p.title}</div>
+            <div class="product-price">৳ \${p.price}</div>
+            <button class="buy-btn" onclick="openOrderModal('\${p.title}', \${p.price})">Buy Now (কিনুন)</button>
+        </div>`;
+    });
+
     res.send(`
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Shinrai | Best Online Shopping Marketplace</title>
+        <title>Shinrai | Marketplace</title>
         <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-            body { background-color: #f4f4f4; color: #333; }
-            
-            /* Header */
-            header { background-color: #FF4747; color: white; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-            .logo { font-size: 26px; font-weight: bold; letter-spacing: 1px; }
-            .search-bar { width: 50%; display: flex; }
-            .search-bar input { width: 100%; padding: 10px; border: none; border-radius: 4px 0 0 4px; outline: none; }
-            .search-bar button { padding: 10px 20px; background: #222; color: white; border: none; border-radius: 0 4px 4px 0; cursor: pointer; }
-            .nav-links a { color: white; text-decoration: none; margin-left: 20px; font-weight: 500; }
-
-            /* Banner Section */
-            .banner { background: linear-gradient(135deg, #FF4747, #ff7676); color: white; padding: 60px 50px; text-align: center; margin-bottom: 30px; }
-            .banner h1 { font-size: 42px; margin-bottom: 10px; }
-            .banner p { font-size: 18px; opacity: 0.9; }
-
-            /* Main Container */
-            .container { padding: 0 50px 50px 50px; }
-            .section-title { font-size: 22px; margin-bottom: 20px; border-left: 5px solid #FF4747; padding-left: 10px; }
-
-            /* Product Grid */
+            * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+            body { background: #f5f5f5; }
+            header { background: #FF4747; color: white; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; }
+            .logo { font-size: 24px; font-weight: bold; }
+            .container { padding: 4px 50px; margin-top: 30px; }
             .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-            .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: 0.3s; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; }
-            .product-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-            .product-img { width: 100%; height: 180px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-weight: bold; margin-bottom: 15px; }
-            .product-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; height: 40px; overflow: hidden; }
-            .product-price { color: #FF4747; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
-            .buy-btn { background: #FF4747; color: white; text-align: center; padding: 8px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
-            .buy-btn:hover { background: #e03e3e; }
+            .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+            .product-img { height: 150px; background: #eee; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: bold; color: #888; }
+            .product-title { font-weight: bold; margin-bottom: 10px; height: 40px; }
+            .product-price { color: #FF4747; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+            .buy-btn { background: #FF4747; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
+            
+            /* Order Form Modal */
+            #orderModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+            .modal-content { background:white; padding:30px; border-radius:8px; width:400px; }
+            .modal-content input, .modal-content select { width:100%; padding:10px; margin: 10px 0; border: 1px solid #ccc; border-radius:4px; }
+            .submit-btn { background:#28a745; color:white; border:none; padding:10px; width:100%; font-weight:bold; cursor:pointer; }
+            .close-btn { background:#ccc; margin-top:5px; }
         </style>
     </head>
     <body>
-
-        <!-- Top Navigation Bar -->
         <header>
             <div class="logo">Shinrai</div>
-            <div class="search-bar">
-                <input type="text" placeholder="AliExpress এর মতো প্রোডাক্ট খুঁজুন...">
-                <button>Search</button>
-            </div>
-            <div class="nav-links">
-                <a href="#">Home</a>
-                <a href="/admin">Dashboard</a>
-                <a href="#">Cart (0)</a>
-            </div>
+            <div><a href="/admin" style="color:white; text-decoration:none; font-weight:bold;">Admin Dashboard 📊</a></div>
         </header>
-
-        <!-- Flash Sale Banner -->
-        <div class="banner">
-            <h1>Welcome to Shinrai Marketplace</h1>
-            <p>১০০% বিশ্বস্ততায় সেরা গ্যাজেট এবং লাইফস্টাইল প্রোডাক্ট কিনুন সাশ্রয়ী মূল্যে।</p>
+        <div class="container">
+            <h2 style="margin-bottom:20px;">Trending Products</h2>
+            <div class="product-grid">\${productHTML}</div>
         </div>
 
-        <!-- Trending Products Section -->
-        <div class="container">
-            <h2 class="section-title">Trending Products (চলতি ট্রেন্ড)</h2>
-            <div class="product-grid">
-                
-                <!-- Product 1 -->
-                <div class="product-card">
-                    <div class="product-img">Smart Watch T800</div>
-                    <div class="product-title">T800 Ultra Smartwatch with Wireless Charging</div>
-                    <div class="product-price">৳ ১,২০০</div>
-                    <a href="#" class="buy-btn">Order Now</a>
-                </div>
-
-                <!-- Product 2 -->
-                <div class="product-card">
-                    <div class="product-img">Wireless Earbuds</div>
-                    <div class="product-title">Pro 4 Wireless Bluetooth Earbuds High Bass</div>
-                    <div class="product-price">৳ ৮৫০</div>
-                    <a href="#" class="buy-btn">Order Now</a>
-                </div>
-
-                <!-- Product 3 -->
-                <div class="product-card">
-                    <div class="product-img">Power Bank 20k</div>
-                    <div class="product-title">Fast Charging 20000mAh Power Bank Slim Design</div>
-                    <div class="product-price">৳ ১,৮৫০</div>
-                    <a href="#" class="buy-btn">Order Now</a>
-                </div>
-
-                <!-- Product 4 -->
-                <div class="product-card">
-                    <div class="product-img">RGB Desk Lamp</div>
-                    <div class="product-title">Smart Motion Sensor RGB LED Desk Night Lamp</div>
-                    <div class="product-price">৳ ৯50</div>
-                    <a href="#" class="buy-btn">Order Now</a>
-                </div>
-
+        <!-- Checkout / Delivery Modal -->
+        <div id="orderModal">
+            <div class="modal-content">
+                <h3 id="modalProductTitle">Order Form</h3>
+                <form action="/place-order" method="POST">
+                    <input type="hidden" name="productTitle" id="hiddenProductTitle">
+                    <input type="hidden" name="productPrice" id="hiddenProductPrice">
+                    
+                    <input type="text" name="customerName" placeholder="আপনার নাম (Your Name)" required>
+                    <input type="text" name="customerPhone" placeholder="মোবাইল নাম্বার (Mobile Number)" required>
+                    <input type="text" name="customerAddress" placeholder="পূর্ণ ঠিকানা (Full Delivery Address)" required>
+                    
+                    <label>পেমেন্ট পদ্ধতি (Payment Method):</label>
+                    <select name="paymentMethod">
+                        <option value="Cash On Delivery">Cash On Delivery (ক্যাশ অন ডেলিভারি)</option>
+                        <option value="bKash">bKash (বিকাশ ম্যানুয়াল)</option>
+                    </select>
+                    <button type="submit" class="submit-btn">Confirm Order (অর্ডার নিশ্চিত করুন)</button>
+                    <button type="button" class="submit-btn close-btn" onclick="closeModal()">Cancel</button>
+                </form>
             </div>
         </div>
 
+        <script>
+            function openOrderModal(title, price) {
+                document.getElementById('orderModal').style.display = 'flex';
+                document.getElementById('modalProductTitle').innerText = "Buy: " + title + " (৳" + price + ")";
+                document.getElementById('hiddenProductTitle').value = title;
+                document.getElementById('hiddenProductPrice').value = price;
+            }
+            function closeModal() { document.getElementById('orderModal').style.display = 'none'; }
+        </script>
     </body>
     </html>
     `);
 });
 
-// আপনার প্রফেশনাল অ্যাডমিন প্যানেল রাউট (JSON API)
-app.get('/admin', (req, res) => {
-    res.json({
-        store_name: "Shinrai",
-        owner: "Single Seller",
-        total_products: 4,
-        total_orders: 0,
-        active_status: "Operational"
+// ======= ২. অর্ডার প্লেস করার ব্যাকএন্ড লজিক =======
+app.post('/place-order', (req, res) => {
+    const { productTitle, productPrice, customerName, customerPhone, customerAddress, paymentMethod } = req.body;
+    orders.push({
+        id: orders.length + 1,
+        productTitle,
+        productPrice,
+        customerName,
+        customerPhone,
+        customerAddress,
+        paymentMethod,
+        date: new Date().toLocaleString()
     });
+    res.send('<h1>Order Successful! আপনার অর্ডারটি গ্রহণ করা হয়েছে।</h1><a href="/">ফিরে যান</a>');
+});
+
+// ======= ৩. আপনার নিজের জন্য প্রফেশনাল অ্যাডমিন ড্যাশবোর্ড =======
+app.get('/admin', (req, res) => {
+    let orderRows = '';
+    orders.forEach(o => {
+        orderRows += `
+        <tr>
+            <td>#\${o.id}</td>
+            <td>\${o.customerName}</td>
+            <td>\${o.customerPhone}</td>
+            <td>\${o.customerAddress}</td>
+            <td>\${o.productTitle}</td>
+            <td>৳\${o.productPrice}</td>
+            <td><strong>\${o.paymentMethod}</strong></td>
+            <td>\${o.date}</td>
+        </tr>`;
+    });
+
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <title>Shinrai Admin Panel</title>
+        <style>
+            body { font-family:sans-serif; background:#f4f6f9; padding:30px; }
+            .card { background:white; padding:20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
+            table { width:100%; border-collapse: collapse; margin-top:15px; }
+            th, td { padding:12px; border: 1px solid #ddd; text-align:left; }
+            th { background:#FF4747; color:white; }
+            .btn { background:#28a745; color:white; padding:10px 15px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; text-decoration:none; }
+        </style>
+    </head>
+    <body>
+        <h2>📊 Shinrai Admin Dashboard (মালিকের প্যানেল)</h2>
+        <br>
+        <div class="card">
+            <h3>➕ নতুন প্রোডাক্ট যোগ করুন (Add Product)</h3>
+            <form action="/admin/add-product" method="POST" style="margin-top:10px;">
+                <input type="text" name="title" placeholder="Product Name" style="padding:8px; width:200px;" required>
+                <input type="number" name="price" placeholder="Price" style="padding:8px; width:100px;" required>
+                <button type="submit" class="btn">Add Product</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>📦 কাস্টমারদের অর্ডার লিস্ট (Customer Orders)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer Name</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Payment</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    \${orderRows || '<tr><td colspan="8" style="text-align:center;">এখনো কোনো অর্ডার আসেনি।</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <a href="/" class="btn" style="background:#007bff;">🌐 ওয়েবসাইট দেখুন</a>
+    </body>
+    </html>
+    `);
+});
+
+// ======= ৪. নতুন প্রোডাক্ট অ্যাড করার ব্যাকএন্ড লজিক =======
+app.post('/admin/add-product', (req, res) => {
+    const { title, price } = req.body;
+    products.push({
+        id: products.length + 1,
+        title,
+        price: parseInt(price),
+        img: "New Product Box"
+    });
+    res.redirect('/admin');
 });
 
 app.listen(PORT, () => {
