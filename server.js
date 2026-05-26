@@ -5,7 +5,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// সাময়িকভাবে ডাটা জমা রাখার জন্য (Database হিসেবে)
+// ডেটাবেজ (সাময়িক)
 let products = [
     { id: 1, title: "T800 Ultra Smartwatch", price: 1200, img: "Smart Watch T800" },
     { id: 2, title: "Pro 4 Wireless Earbuds", price: 850, img: "Wireless Earbuds" },
@@ -17,15 +17,16 @@ let orders = [];
 // ======= ১. কাস্টমারদের জন্য মূল ওয়েবসাইট =======
 app.get('/', (req, res) => {
     let productHTML = '';
-    products.forEach(p => {
+    for(let i=0; i<products.length; i++) {
+        let p = products[i];
         productHTML += `
         <div class="product-card">
-            <div class="product-img">\${p.img}</div>
-            <div class="product-title">\${p.title}</div>
-            <div class="product-price">৳ \${p.price}</div>
-            <button class="buy-btn" onclick="openOrderModal('\${p.title}', \${p.price})">Buy Now (কিনুন)</button>
+            <div class="product-img">` + p.img + `</div>
+            <div class="product-title">` + p.title + `</div>
+            <div class="product-price">৳ ` + p.price + `</div>
+            <button class="buy-btn" onclick="openOrderModal('` + p.title + `', ` + p.price + `)">Buy Now (কিনুন)</button>
         </div>`;
-    });
+    }
 
     res.send(`
     <!DOCTYPE html>
@@ -39,7 +40,7 @@ app.get('/', (req, res) => {
             body { background: #f5f5f5; }
             header { background: #FF4747; color: white; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; }
             .logo { font-size: 24px; font-weight: bold; }
-            .container { padding: 4px 50px; margin-top: 30px; }
+            .container { padding: 20px 50px; margin-top: 10px; }
             .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
             .product-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
             .product-img { height: 150px; background: #eee; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: bold; color: #888; }
@@ -48,11 +49,11 @@ app.get('/', (req, res) => {
             .buy-btn { background: #FF4747; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
             
             /* Order Form Modal */
-            #orderModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+            #orderModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 999; }
             .modal-content { background:white; padding:30px; border-radius:8px; width:400px; }
             .modal-content input, .modal-content select { width:100%; padding:10px; margin: 10px 0; border: 1px solid #ccc; border-radius:4px; }
-            .submit-btn { background:#28a745; color:white; border:none; padding:10px; width:100%; font-weight:bold; cursor:pointer; }
-            .close-btn { background:#ccc; margin-top:5px; }
+            .submit-btn { background:#28a745; color:white; border:none; padding:10px; width:100%; font-weight:bold; cursor:pointer; margin-top: 10px; }
+            .close-btn { background:#ccc; margin-top:5px; color: #333; }
         </style>
     </head>
     <body>
@@ -62,10 +63,10 @@ app.get('/', (req, res) => {
         </header>
         <div class="container">
             <h2 style="margin-bottom:20px;">Trending Products</h2>
-            <div class="product-grid">\${productHTML}</div>
+            <div class="product-grid">` + productHTML + `</div>
         </div>
 
-        <!-- Checkout / Delivery Modal -->
+        <!-- Checkout Form Modal -->
         <div id="orderModal">
             <div class="modal-content">
                 <h3 id="modalProductTitle">Order Form</h3>
@@ -77,7 +78,7 @@ app.get('/', (req, res) => {
                     <input type="text" name="customerPhone" placeholder="মোবাইল নাম্বার (Mobile Number)" required>
                     <input type="text" name="customerAddress" placeholder="পূর্ণ ঠিকানা (Full Delivery Address)" required>
                     
-                    <label>পেমেন্ট পদ্ধতি (Payment Method):</label>
+                    <label>পেমেন্ট পদ্ধতি:</label>
                     <select name="paymentMethod">
                         <option value="Cash On Delivery">Cash On Delivery (ক্যাশ অন ডেলিভারি)</option>
                         <option value="bKash">bKash (বিকাশ ম্যানুয়াল)</option>
@@ -102,7 +103,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ======= ২. অর্ডার প্লেস করার ব্যাকএন্ড লজিক =======
+// ======= ২. অর্ডার প্লেস করার ব্যাকএন্ড =======
 app.post('/place-order', (req, res) => {
     const { productTitle, productPrice, customerName, customerPhone, customerAddress, paymentMethod } = req.body;
     orders.push({
@@ -118,22 +119,23 @@ app.post('/place-order', (req, res) => {
     res.send('<h1>Order Successful! আপনার অর্ডারটি গ্রহণ করা হয়েছে।</h1><a href="/">ফিরে যান</a>');
 });
 
-// ======= ৩. আপনার নিজের জন্য প্রফেশনাল অ্যাডমিন ড্যাশবোর্ড =======
+// ======= ৩. আপনার নিজের জন্য অ্যাডমিন ড্যাশবোর্ড =======
 app.get('/admin', (req, res) => {
     let orderRows = '';
-    orders.forEach(o => {
+    for(let j=0; j<orders.length; j++) {
+        let o = orders[j];
         orderRows += `
         <tr>
-            <td>#\${o.id}</td>
-            <td>\${o.customerName}</td>
-            <td>\${o.customerPhone}</td>
-            <td>\${o.customerAddress}</td>
-            <td>\${o.productTitle}</td>
-            <td>৳\${o.productPrice}</td>
-            <td><strong>\${o.paymentMethod}</strong></td>
-            <td>\${o.date}</td>
+            <td>#` + o.id + `</td>
+            <td>` + o.customerName + `</td>
+            <td>` + o.customerPhone + `</td>
+            <td>` + o.customerAddress + `</td>
+            <td>` + o.productTitle + `</td>
+            <td>৳` + o.productPrice + `</td>
+            <td><strong>` + o.paymentMethod + `</strong></td>
+            <td>` + o.date + `</td>
         </tr>`;
-    });
+    }
 
     res.send(`
     <!DOCTYPE html>
@@ -177,7 +179,7 @@ app.get('/admin', (req, res) => {
                     </tr>
                 </thead>
                 <tbody>
-                    \${orderRows || '<tr><td colspan="8" style="text-align:center;">এখনো কোনো অর্ডার আসেনি।</td></tr>'}
+                    ` + (orderRows || '<tr><td colspan="8" style="text-align:center;">এখনো কোনো অর্ডার আসেনি।</td></tr>') + `
                 </tbody>
             </table>
         </div>
@@ -188,7 +190,7 @@ app.get('/admin', (req, res) => {
     `);
 });
 
-// ======= ৪. নতুন প্রোডাক্ট অ্যাড করার ব্যাকএন্ড লজিক =======
+// ======= ৪. নতুন প্রোডাক্ট অ্যাড করার ব্যাকএন্ড =======
 app.post('/admin/add-product', (req, res) => {
     const { title, price } = req.body;
     products.push({
